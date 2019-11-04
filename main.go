@@ -6,6 +6,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"log"
 	"net"
 	"strings"
 
@@ -43,8 +44,8 @@ func (i *IPAddressList) Set(value string) error {
 
 type FirewallConfig struct {
 	IPAddrs IPAddressList
-	ELF     string
-	Iface   string
+	ELF     *string
+	Iface   *string
 }
 
 type Wall struct {
@@ -54,7 +55,7 @@ type Wall struct {
 }
 
 func (w *Wall) createBPFSystem() error {
-	if err := w.bpf.LoadElf(w.ELF); err != nil {
+	if err := w.bpf.LoadElf(*w.ELF); err != nil {
 		w.lg.Error("loading of ELF program failed: ", err)
 		return err
 	}
@@ -62,14 +63,17 @@ func (w *Wall) createBPFSystem() error {
 }
 
 func main() {
-	logger, _ := zap.NewProduction()
+	logger, err := zap.NewProduction()
+	if err != nil {
+		log.Fatal("unable to initialize logger: ", err)
+	}
 	defer logger.Sync()
 
 	w := Wall{
 		lg: logger.Sugar(),
 		FirewallConfig: FirewallConfig{
-			Iface: *flag.String("iface", "", "Interface to bind XDP program to"),
-			ELF:   *flag.String("elf", "ebpf_prog/xdp_fw.elf", "clang/llvm compiled binary file"),
+			Iface: flag.String("iface", "", "Interface to bind XDP program to"),
+			ELF:   flag.String("elf", "ebpf_prog/xdp_fw.elf", "clang/llvm compiled binary file"),
 		},
 		bpf: goebpf.NewDefaultEbpfSystem(),
 	}
@@ -77,12 +81,14 @@ func main() {
 	flag.Var(&w.IPAddrs, "drop", "IPv4 CIDR to DROP traffic from, repeatable")
 	flag.Parse()
 
-	if w.Iface == "" {
-		w.lg.Fatal("-iface is required.")
+	if *w.Iface == "" {
+		flag.PrintDefaults()
+		log.Fatal("-iface is required.")
 	}
 
 	if len(w.IPAddrs) <= 0 {
-		w.lg.Fatal("at least one IPv4 address to DROP required to the -drop flag.")
+		flag.PrintDefaults()
+		log.Fatal("at least one IPv4 address to DROP required to the -drop flag.")
 	}
 
 	if err := w.createBPFSystem(); err != nil {

@@ -56,11 +56,13 @@ func TestWall_createBPFSystem(t *testing.T) {
 	testCases := []struct {
 		name          string
 		loadElfFn     func(string) error
+		ElfFile       string
 		expectedError error
 		expectedLogs  []string
 	}{
 		{
-			name: "happy path",
+			name:    "happy path",
+			ElfFile: "ebpf_prog/xdp_fw.elf",
 		},
 		{
 			name: "sad path: LoadElf() fails because of invalid file",
@@ -75,10 +77,16 @@ func TestWall_createBPFSystem(t *testing.T) {
 	for _, tc := range testCases {
 		core, recorded := observer.New(zapcore.DebugLevel)
 		zl := zap.New(core)
+
 		w := Wall{
 			lg: zl.Sugar(),
 			bpf: mockSystem{
 				loadElf: tc.loadElfFn,
+			},
+			FirewallConfig: FirewallConfig{
+				IPAddrs: nil,
+				ELF:     &tc.ElfFile,
+				Iface:   nil,
 			},
 		}
 
