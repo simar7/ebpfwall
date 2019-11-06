@@ -17,11 +17,13 @@ import (
 const (
 	EBPFMatchesMap   = "matches"
 	EBPFBlacklistMap = "blacklist"
+	XDPProgramName   = "firewall"
 )
 
 var (
 	ErrMatchesMapNotFound   = errors.New("eBPF matches map not found")
 	ErrBlackListMapNotFound = errors.New("eBPF blacklist map not found")
+	ErrProgramNotFound      = errors.New("eBPF program not found")
 )
 
 type IPAddressList []string
@@ -64,6 +66,7 @@ type Wall struct {
 	lg *zap.SugaredLogger
 	FirewallConfig
 	bpf goebpf.System
+	xdp goebpf.Program
 }
 
 func (w *Wall) createBPFSystem() error {
@@ -87,6 +90,15 @@ func (w *Wall) getBPFMaps() error {
 		return ErrBlackListMapNotFound
 	}
 
+	return nil
+}
+
+func (w *Wall) getProgramByName() error {
+	w.xdp = w.bpf.GetProgramByName("firewall")
+	if w.xdp == nil {
+		w.lg.Errorf("%s: %s", ErrProgramNotFound, XDPProgramName)
+		return ErrProgramNotFound
+	}
 	return nil
 }
 
