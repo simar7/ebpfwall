@@ -14,6 +14,16 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	EBPFMatchesMap   = "matches"
+	EBPFBlacklistMap = "blacklist"
+)
+
+var (
+	ErrMatchesMapNotFound   = errors.New("eBPF matches map not found")
+	ErrBlackListMapNotFound = errors.New("eBPF blacklist map not found")
+)
+
 type IPAddressList []string
 
 // Implements flag.Value
@@ -43,9 +53,11 @@ func (i *IPAddressList) Set(value string) error {
 }
 
 type FirewallConfig struct {
-	IPAddrs IPAddressList
-	ELF     *string
-	Iface   *string
+	IPAddrs   IPAddressList
+	ELF       *string
+	Iface     *string
+	BlackList goebpf.Map
+	Matches   goebpf.Map
 }
 
 type Wall struct {
@@ -59,6 +71,22 @@ func (w *Wall) createBPFSystem() error {
 		w.lg.Error("loading of ELF program failed: ", err)
 		return err
 	}
+	return nil
+}
+
+func (w *Wall) getBPFMaps() error {
+	w.Matches = w.bpf.GetMapByName(EBPFMatchesMap)
+	if w.Matches == nil {
+		w.lg.Errorf("%s: %s", EBPFMatchesMap, ErrMatchesMapNotFound)
+		return ErrMatchesMapNotFound
+	}
+
+	w.BlackList = w.bpf.GetMapByName(EBPFBlacklistMap)
+	if w.BlackList == nil {
+		w.lg.Errorf("%s: %s", EBPFBlacklistMap, ErrBlackListMapNotFound)
+		return ErrBlackListMapNotFound
+	}
+
 	return nil
 }
 
@@ -94,4 +122,9 @@ func main() {
 	if err := w.createBPFSystem(); err != nil {
 		w.lg.Fatal("failed to load elf: ", err)
 	}
+
+	if err = w.getBPFMaps(); err != nil {
+		w.lg.Fatal("failed to load bpf maps: ", err)
+	}
+
 }
