@@ -26,6 +26,9 @@ clean:
 	rm -f $(GO_BINARY)
 	rm -f $(EBPF_BINARY)
 
+test:
+	go test -v ./...
+
 $(EBPF_BINARY): $(EBPF_SOURCE)
 	$(CLANG) $(CLANG_INCLUDE) -O2 -target bpf -c $^  -o $@
 
