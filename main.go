@@ -1,5 +1,3 @@
-// Inspired from: https://github.com/dropbox/goebpf/blob/master/examples/xdp/basic_firewall/main.go
-
 package main
 
 import (
