@@ -22,6 +22,8 @@ var (
 	ErrMatchesMapNotFound   = errors.New("eBPF matches map not found")
 	ErrBlackListMapNotFound = errors.New("eBPF blacklist map not found")
 	ErrProgramNotFound      = errors.New("eBPF program not found")
+	ErrTooManyIPs           = errors.New("maximum of 16 IPv4 addresses supported")
+	ErrInvalidIP            = errors.New("invalid IP address")
 )
 
 type IPAddressList []string
@@ -34,14 +36,14 @@ func (i *IPAddressList) String() string {
 // Implements flag.Value
 func (i *IPAddressList) Set(value string) error {
 	if len(*i) == 16 {
-		return errors.New("Up to 16 IPv4 addresses supported")
+		return ErrTooManyIPs
 	}
 	// Validate that value is correct IPv4 address
 	if !strings.Contains(value, "/") {
 		value += "/32"
 	}
 	if strings.Contains(value, ":") {
-		return fmt.Errorf("%s is not an IPv4 address", value)
+		return fmt.Errorf("%s "+ErrInvalidIP.Error(), value)
 	}
 	_, _, err := net.ParseCIDR(value)
 	if err != nil {
