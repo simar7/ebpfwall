@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"net"
 	"testing"
 
 	"github.com/dropbox/goebpf"
@@ -14,6 +15,7 @@ import (
 )
 
 type mockMap struct {
+	insert func(interface{}, interface{}) error
 }
 
 func (mm mockMap) Create() error {
@@ -52,8 +54,11 @@ func (mm mockMap) LookupString(interface{}) (string, error) {
 	panic("implement me")
 }
 
-func (mm mockMap) Insert(interface{}, interface{}) error {
-	panic("implement me")
+func (mm mockMap) Insert(a interface{}, b interface{}) error {
+	if mm.insert != nil {
+		return mm.insert(a, b)
+	}
+	return nil
 }
 
 func (mm mockMap) Update(interface{}, interface{}) error {
@@ -317,4 +322,66 @@ func TestWall_getProgramByName(t *testing.T) {
 		loggedLogs := getAllLoggedLogs(recorded.All())
 		assert.Equal(t, tc.expectedLogs, loggedLogs, tc.name)
 	}
+}
+
+func TestWall_populateBlackList(t *testing.T) {
+	testCases := []struct {
+		name                string
+		blackListInsertFunc func(interface{}, interface{}) error
+		expectedLogs        []string
+		expectedError       error
+	}{
+		{
+			name: "happy path with two IP addresses in blacklist",
+			blackListInsertFunc: func(ip interface{}, index interface{}) error {
+				switch index {
+				case 0:
+					assert.Equal(t, &net.IPNet{
+						IP:   net.IP{0x1, 0x2, 0x3, 0x4},
+						Mask: net.IPMask{0xff, 0xff, 0xff, 0xff},
+					}, ip)
+				case 1:
+					assert.Equal(t, &net.IPNet{
+						IP:   net.IP{0x5, 0x6, 0x7, 0x0}, // 5.6.7.8/24 is added as 5.6.7.0/24 for the range
+						Mask: net.IPMask{0xff, 0xff, 0xff, 0x0},
+					}, ip)
+				default:
+					assert.FailNow(t, "unexpected index ip combination found: ", ip, index)
+				}
+				return nil
+			},
+			expectedLogs: []string{"Populating blacklist with input IPs...", "1.2.3.4/32", "5.6.7.8/24"},
+		},
+		{
+			name: "sad path error adding ip address into LPMtrie",
+			blackListInsertFunc: func(i interface{}, i2 interface{}) error {
+				return errors.New("error adding ip")
+			},
+			expectedError: errors.New("error adding ip"),
+			expectedLogs:  []string{"Populating blacklist with input IPs...", "1.2.3.4/32", "error adding ip: 1.2.3.4/32"},
+		},
+	}
+
+	for _, tc := range testCases {
+		core, recorded := observer.New(zapcore.DebugLevel)
+		zl := zap.New(core)
+
+		w := Wall{
+			lg: zl.Sugar(),
+			FirewallConfig: FirewallConfig{
+				IPAddrs: IPAddressList{
+					"1.2.3.4/32",
+					"5.6.7.8/24",
+				},
+				BlackList: mockMap{
+					insert: tc.blackListInsertFunc,
+				},
+			},
+		}
+		assert.Equal(t, tc.expectedError, w.populateBlackList(), tc.name)
+
+		loggedLogs := getAllLoggedLogs(recorded.All())
+		assert.Equal(t, tc.expectedLogs, loggedLogs, tc.name)
+	}
+
 }

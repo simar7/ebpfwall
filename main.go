@@ -102,6 +102,18 @@ func (w *Wall) getProgramByName() error {
 	return nil
 }
 
+func (w *Wall) populateBlackList() error {
+	w.lg.Info("Populating blacklist with input IPs...")
+	for index, ip := range w.FirewallConfig.IPAddrs {
+		w.lg.Infof("%s", ip)
+		if err := w.BlackList.Insert(goebpf.CreateLPMtrieKey(ip), index); err != nil {
+			w.lg.Error("error adding ip: ", ip)
+			return err
+		}
+	}
+	return nil
+}
+
 func main() {
 	logger, err := zap.NewProduction()
 	if err != nil {
@@ -139,4 +151,11 @@ func main() {
 		w.lg.Fatal("failed to load bpf maps: ", err)
 	}
 
+	if err = w.getProgramByName(); err != nil {
+		w.lg.Fatalf("failed to load program: ", err)
+	}
+
+	if err = w.populateBlackList(); err != nil {
+		w.lg.Fatalf("failed to populate blacklist: ", err)
+	}
 }
