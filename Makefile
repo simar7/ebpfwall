@@ -9,8 +9,8 @@ GOCLEAN := $(GOCMD) clean
 CLANG := clang
 CLANG_INCLUDE := -I../../..
 
-GO_SOURCE := main.go
-GO_BINARY := main
+GO_SOURCE := main.go wall.go
+GO_BINARY := thewall
 
 EBPF_SOURCE := ebpf_prog/xdp_fw.c
 EBPF_BINARY := ebpf_prog/xdp_fw.elf
