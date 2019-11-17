@@ -91,4 +91,6 @@ func main() {
 	if err = w.attachXDP(); err != nil {
 		w.lg.Fatalf("unable to attach XDP program: ", err)
 	}
+	defer w.xdp.Detach()
+
 }
