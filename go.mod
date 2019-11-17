@@ -3,6 +3,7 @@ module github.com/simar7/ebpfwall
 go 1.13
 
 require (
+	github.com/buger/goterm v0.0.0-20181115115552-c206103e1f37
 	github.com/dropbox/goebpf v0.0.0-20191101224440-b4a5d6260e8c
 	github.com/stretchr/testify v1.4.0
 	github.com/vishvananda/netlink v1.0.0 // indirect

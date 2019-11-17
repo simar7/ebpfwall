@@ -5,8 +5,12 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
+	"os/signal"
 	"strings"
+	"time"
 
+	tm "github.com/buger/goterm"
 	"github.com/dropbox/goebpf"
 	"go.uber.org/zap"
 )
@@ -92,5 +96,34 @@ func main() {
 		w.lg.Fatalf("unable to attach XDP program: ", err)
 	}
 	defer w.xdp.Detach()
+
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, os.Interrupt)
+
+	ticker := time.NewTicker(time.Second * 1)
+
+	for {
+		select {
+		case <-ticker.C:
+			tm.Clear()
+			tm.MoveCursor(1, 1)
+			_, _ = tm.Println("Current Time:", time.Now().Format(time.RFC1123))
+			table := tm.NewTable(0, 10, 5, ' ', 0)
+			_, _ = fmt.Fprintf(table, "IP\tDROPs\n")
+
+			for i := 0; i < len(w.IPAddrs); i++ {
+				value, err := w.Matches.Lookup(i)
+				if err != nil {
+					continue
+				}
+				_, _ = fmt.Fprintf(table, "%s\t%d\n", w.IPAddrs[i], value)
+			}
+			_, _ = tm.Println(table)
+			tm.Flush()
+		case <-interrupt:
+			w.lg.Info("Detaching and exiting..")
+			return
+		}
+	}
 
 }
