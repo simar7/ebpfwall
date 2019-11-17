@@ -244,3 +244,44 @@ func TestWall_populateBlackList(t *testing.T) {
 	}
 
 }
+
+func TestWall_loadXDP(t *testing.T) {
+	testCases := []struct {
+		name          string
+		loadFunc      func() error
+		expectedError error
+		expectedLogs  []string
+	}{
+		{
+			name:         "happy path",
+			expectedLogs: []string{"loading XDP program into the kernel..."},
+		},
+		{
+			name: "sad path: load func returns an error",
+			loadFunc: func() error {
+				return errors.New("loading of program failed")
+			},
+			expectedLogs: []string{
+				"loading XDP program into the kernel...",
+				"load failed, err: loading of program failed",
+			},
+			expectedError: errors.New("loading of program failed"),
+		},
+	}
+
+	for _, tc := range testCases {
+		core, recorded := observer.New(zapcore.DebugLevel)
+		zl := zap.New(core)
+
+		w := Wall{
+			lg: zl.Sugar(),
+			xdp: mockProgram{
+				load: tc.loadFunc,
+			},
+		}
+		assert.Equal(t, tc.expectedError, w.loadXDP(), tc.name)
+
+		loggedLogs := getAllLoggedLogs(recorded.All())
+		assert.Equal(t, tc.expectedLogs, loggedLogs, tc.name)
+	}
+}

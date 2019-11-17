@@ -62,10 +62,14 @@ func (mm mockMap) Delete(interface{}) error {
 }
 
 type mockProgram struct {
+	load func() error
 }
 
 func (mp mockProgram) Load() error {
-	panic("implement me")
+	if mp.load != nil {
+		return mp.load()
+	}
+	return nil
 }
 
 func (mp mockProgram) Pin(path string) error {

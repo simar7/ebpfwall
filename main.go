@@ -83,4 +83,8 @@ func main() {
 	if err = w.populateBlackList(); err != nil {
 		w.lg.Fatalf("failed to populate blacklist: ", err)
 	}
+
+	if err = w.loadXDP(); err != nil {
+		w.lg.Fatalf("unable to load XDP program into the kernel: ", err)
+	}
 }

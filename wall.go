@@ -80,3 +80,12 @@ func (w *Wall) populateBlackList() error {
 	}
 	return nil
 }
+
+func (w *Wall) loadXDP() error {
+	w.lg.Info("loading XDP program into the kernel...")
+	if err := w.xdp.Load(); err != nil {
+		w.lg.Error("load failed, err: ", err)
+		return err
+	}
+	return nil
+}
