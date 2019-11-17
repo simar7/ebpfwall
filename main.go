@@ -87,4 +87,8 @@ func main() {
 	if err = w.loadXDP(); err != nil {
 		w.lg.Fatalf("unable to load XDP program into the kernel: ", err)
 	}
+
+	if err = w.attachXDP(); err != nil {
+		w.lg.Fatalf("unable to attach XDP program: ", err)
+	}
 }

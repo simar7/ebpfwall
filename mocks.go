@@ -62,7 +62,8 @@ func (mm mockMap) Delete(interface{}) error {
 }
 
 type mockProgram struct {
-	load func() error
+	load   func() error
+	attach func(interface{}) error
 }
 
 func (mp mockProgram) Load() error {
@@ -81,7 +82,10 @@ func (mp mockProgram) Close() error {
 }
 
 func (mp mockProgram) Attach(data interface{}) error {
-	panic("implement me")
+	if mp.attach != nil {
+		return mp.attach(data)
+	}
+	return nil
 }
 
 func (mp mockProgram) Detach() error {

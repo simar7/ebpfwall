@@ -285,3 +285,48 @@ func TestWall_loadXDP(t *testing.T) {
 		assert.Equal(t, tc.expectedLogs, loggedLogs, tc.name)
 	}
 }
+
+func TestWall_attachXDP(t *testing.T) {
+	testCases := []struct {
+		name          string
+		attachFunc    func(interface{}) error
+		expectedError error
+		expectedLogs  []string
+	}{
+		{
+			name:         "happy path",
+			expectedLogs: []string{"attaching XDP program to interface: testiface..."},
+		},
+		{
+			name: "sad path: attach func returns an error",
+			attachFunc: func(interface{}) error {
+				return errors.New("attaching of program failed")
+			},
+			expectedLogs: []string{
+				"attaching XDP program to interface: testiface...",
+				"attach failed, err: attaching of program failed",
+			},
+			expectedError: errors.New("attaching of program failed"),
+		},
+	}
+
+	for _, tc := range testCases {
+		core, recorded := observer.New(zapcore.DebugLevel)
+		zl := zap.New(core)
+
+		testiface := "testiface"
+		w := Wall{
+			lg: zl.Sugar(),
+			xdp: mockProgram{
+				attach: tc.attachFunc,
+			},
+			FirewallConfig: FirewallConfig{
+				Iface: &testiface,
+			},
+		}
+		assert.Equal(t, tc.expectedError, w.attachXDP(), tc.name)
+
+		loggedLogs := getAllLoggedLogs(recorded.All())
+		assert.Equal(t, tc.expectedLogs, loggedLogs, tc.name)
+	}
+}

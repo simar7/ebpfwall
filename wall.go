@@ -89,3 +89,12 @@ func (w *Wall) loadXDP() error {
 	}
 	return nil
 }
+
+func (w *Wall) attachXDP() error {
+	w.lg.Infof("attaching XDP program to interface: %s...", *w.FirewallConfig.Iface)
+	if err := w.xdp.Attach(*w.FirewallConfig.Iface); err != nil {
+		w.lg.Error("attach failed, err: ", err)
+		return err
+	}
+	return nil
+}
